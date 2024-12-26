@@ -29,6 +29,9 @@ token = <your_gitlab_token>
 token = <your_github_token>
 ```
 This was written on a Windows system. OS commands may need adjustment for other platforms.
+### NOTE: EXCLUDE
+The script has an exclude list for gitlab groups hardcoded into it. You can pick and choose which groups to include/exclude by adding/removing their names to this list. This was a crude fix to save time.
+
 
 # Usage
 - Set up the configuration file with your GitLab and GitHub credentials.
