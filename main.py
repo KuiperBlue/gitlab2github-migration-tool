@@ -1,10 +1,13 @@
+import shutil
 from locale import normalize
-
+from time import sleep
+from git import Repo
 from github import Github
 import github
 import gitlab
 import configparser
 import os
+import stat
 
 def fetch_projects_from_group(group):
     projects = []
@@ -60,16 +63,65 @@ def fetch_projects(exclude):
         result.append(gl_project)
     return result
 
-def check_repository_exists(gitlab_repository, gh):
+def check_repository_exists(name, gh):
     try:
-        repo_to_verify = gh.get_user().get_repo(normalize(gitlab_repository.name))
-        print(f"{repo_to_verify.name} does not exist")
+        repo_to_verify = gh.get_user().get_repo(name)
         return True
     except github.GithubException as e:
-        print(e)
-        print(f"{gitlab_repository.name} already exists")
         return False
 
+def handle_deletion(path):
+    for root, dirs, files in os.walk(path, topdown=False):
+        for name in files:
+            file_path = os.path.join(root,name)
+            os.chmod(file_path, stat.S_IWRITE)
+            os.remove(file_path)
+        for name in dirs:
+            dir_path = os.path.join(root,name)
+            os.chmod(dir_path, stat.S_IWRITE)
+            os.rmdir(dir_path)
+    os.rmdir(path)
+
+def migrate_repository(project, name, gh, gl):
+    dir_path = "E:\\PycharmProjects\\pythonProject"
+    try:
+        os.mkdir(dir_path + "\\tmp")
+        os.chdir(dir_path + "\\tmp")
+        sleep(2)
+        print("Cloning repo ...")
+        gitlab_repository = Repo.clone_from(project.http_url_to_repo, ".")
+        print(f"{gitlab_repository.description}")
+        sleep(2)
+        print("Migrating repo ...")
+        github_repo = gh.get_user().create_repo(
+            name = name,
+            description = ''.join(ch for ch in project.description if ch.isprintable()),
+            private = (project.visibility != "public")
+        )
+
+        origin = gitlab_repository.remotes.origin
+        origin.set_url(github_repo.clone_url.replace("https://", f"https://{GITHUB_TOKEN}@"))
+        origin.push(all=True)
+
+        while(True):
+            try:
+                github_repo = gh.get_user().get_repo(normalize(project.name))
+                print(f"{github_repo.description}")
+                break
+            except github.GithubException as e:
+                sleep(2)
+
+        print("Handling deletion of tmp dir ...")
+        os.chdir(dir_path)
+        handle_deletion(dir_path + "\\tmp")
+        print("Deletion successful ...")
+        sleep(1)
+    except Exception as e:
+        print(e)
+    finally:
+        sleep(1)
+        handle_deletion(dir_path + "\\tmp")
+    return
 
 config = configparser.ConfigParser()
 config.read("secret.config")
@@ -89,5 +141,6 @@ exclude = ["PE1-SE1 Wintersemester 2023-24", "PE2 Sommersemester (Gref)", "PE2 V
 projects = fetch_projects(exclude)
 
 for project in projects:
-    if check_repository_exists(project, gh):
-        print(f"Project {project.name} already exists")
+    name = normalize_name(project.name)
+    if check_repository_exists(name, gh) != True:
+        migrate_repository(project, name, gh, gl)
