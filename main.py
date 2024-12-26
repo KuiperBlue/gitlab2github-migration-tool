@@ -10,16 +10,30 @@ import os
 import stat
 
 def fetch_projects_from_group(group):
+    """
+
+    :param group: gitlab group
+    :return: list of projects
+    """
     projects = []
     group_projects = group.projects.list(all=True)
     projects.extend(group_projects)
     return projects
 
 def flatten(arr):
+    """
+    same function as numpy flatten
+    :param arr: list object
+    :return: flattened list
+    """
     return [item for sublist in arr for item in (flatten(sublist) if isinstance(sublist, list) else [sublist])]
 
 def normalize_name(repo_name):
-    # Mapping of German umlauts to their ASCII equivalents
+    """
+    replaces spaces and umlauts with "-"
+    :param repo_name: original repository name as a string
+    :return: name string
+    """
     umlaut_mapping = {
         'ä': '-',
         'ö': '-',
@@ -71,6 +85,11 @@ def check_repository_exists(name, gh):
         return False
 
 def handle_deletion(path):
+    """
+    deletes everything except the root
+    :param path: root directory path
+    :return:
+    """
     for root, dirs, files in os.walk(path, topdown=False):
         for name in files:
             file_path = os.path.join(root,name)
@@ -83,6 +102,14 @@ def handle_deletion(path):
 
 
 def migrate_repository(project, name, gh):
+    """
+    clones gitlab repository into temporary folder, then creates equivalent github repository and pushes to github origin. Deletes local cloned repo upon completion.
+
+    :param project: gitlab repo object
+    :param name: normalized gitlab repo name
+    :param gh: github object
+    :return: none
+    """
     try:
         sleep(2)
         print("Cloning repo ...")
@@ -110,7 +137,7 @@ def migrate_repository(project, name, gh):
         origin.push(all=True)
         while(True):
             try:
-                github_repo = gh.get_user().get_repo(normalize(project.name))
+                github_repo = gh.get_user().get_repo(name)
                 print("Push successful ...")
                 break
             except github.GithubException as e:
@@ -146,8 +173,7 @@ exclude = ["PE1-SE1 Wintersemester 2023-24", "PE2 Sommersemester (Gref)", "PE2 V
                "CodingSpace", "Zusatzaufgaben", "Vorlesung",
                "Übung", "WEB", "1. Semester", "Projekte", "Übung SS2025"]
 
-projects = fetch_projects(exclude)
-
+# create directory (if not already created) or clean it
 dir_path = "E:\\PycharmProjects\\pythonProject"
 tmp_path = dir_path + "\\tmp"
 if not os.path.isdir(tmp_path):
@@ -158,6 +184,7 @@ if len(os.listdir(tmp_path)) != 0:
     os.mkdir(tmp_path)
 os.chdir(tmp_path)
 
+projects = fetch_projects(exclude)
 for project in projects:
     name = normalize_name(project.name)
     if check_repository_exists(name, gh) != True:
