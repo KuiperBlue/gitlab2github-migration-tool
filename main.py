@@ -80,47 +80,55 @@ def handle_deletion(path):
             dir_path = os.path.join(root,name)
             os.chmod(dir_path, stat.S_IWRITE)
             os.rmdir(dir_path)
-    os.rmdir(path)
 
-def migrate_repository(project, name, gh, gl):
-    dir_path = "E:\\PycharmProjects\\pythonProject"
+
+def migrate_repository(project, name, gh):
     try:
-        os.mkdir(dir_path + "\\tmp")
-        os.chdir(dir_path + "\\tmp")
         sleep(2)
         print("Cloning repo ...")
         gitlab_repository = Repo.clone_from(project.http_url_to_repo, ".")
-        print(f"{gitlab_repository.description}")
+        while(len(os.listdir(tmp_path)) == 0):
+            sleep(2)
+        print(len(os.listdir(tmp_path)))
         sleep(2)
         print("Migrating repo ...")
+
+        if project.description:
+            description = ''.join(ch for ch in project.description if ch.isprintable()),
+        else:
+            description = ""
+
         github_repo = gh.get_user().create_repo(
             name = name,
-            description = ''.join(ch for ch in project.description if ch.isprintable()),
+            description = description,
             private = (project.visibility != "public")
         )
 
+        print("Pushing repo ...")
         origin = gitlab_repository.remotes.origin
         origin.set_url(github_repo.clone_url.replace("https://", f"https://{GITHUB_TOKEN}@"))
         origin.push(all=True)
-
         while(True):
             try:
                 github_repo = gh.get_user().get_repo(normalize(project.name))
-                print(f"{github_repo.description}")
+                print("Push successful ...")
                 break
             except github.GithubException as e:
                 sleep(2)
 
-        print("Handling deletion of tmp dir ...")
-        os.chdir(dir_path)
-        handle_deletion(dir_path + "\\tmp")
-        print("Deletion successful ...")
-        sleep(1)
+        print("Handling deletion of repo files ...")
+        while(True):
+            try:
+                handle_deletion(tmp_path)
+                print("Deletion successful ...")
+                break
+            except:
+                sleep(2)
     except Exception as e:
         print(e)
     finally:
-        sleep(1)
-        handle_deletion(dir_path + "\\tmp")
+        if len(os.listdir(tmp_path)) != 0:
+            handle_deletion(tmp_path)
     return
 
 config = configparser.ConfigParser()
@@ -140,7 +148,17 @@ exclude = ["PE1-SE1 Wintersemester 2023-24", "PE2 Sommersemester (Gref)", "PE2 V
 
 projects = fetch_projects(exclude)
 
+dir_path = "E:\\PycharmProjects\\pythonProject"
+tmp_path = dir_path + "\\tmp"
+if not os.path.isdir(tmp_path):
+    os.mkdir(tmp_path)
+if len(os.listdir(tmp_path)) != 0:
+    print("deleting")
+    handle_deletion(tmp_path)
+    os.mkdir(tmp_path)
+os.chdir(tmp_path)
+
 for project in projects:
     name = normalize_name(project.name)
     if check_repository_exists(name, gh) != True:
-        migrate_repository(project, name, gh, gl)
+        migrate_repository(project, name, gh)
