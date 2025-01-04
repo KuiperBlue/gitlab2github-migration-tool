@@ -19,7 +19,7 @@ This tool was created to automate the migration of repositories from a GitLab in
 - python-gitlab library (pip install python-gitlab)
 
 # Configuration
-Before running the script, create a secret.config file with the following structure:
+In a `secret.config` file (create it before running the script), write down the following:
 ```
 [gitlab]
 url = <your_gitlab_url>
@@ -28,10 +28,12 @@ token = <your_gitlab_token>
 [github]
 token = <your_github_token>
 ```
-This was written on a Windows system. OS commands may need adjustment for other platforms.
-### NOTE: EXCLUDE
-The script has an exclude list for gitlab groups hardcoded into it. You can pick and choose which groups to include/exclude by adding/removing their names to this list. This was a crude fix to save time.
+To generate your tokens go to your github settings -> developer settings and generate a classic token. Make sure to include repo admin permissions. Do the same process in your gitlab account.
 
+Further, the script was written to be native to Windows systems. Some lines may need adjusting for other OS, though the code was kept as OS-agnostic as possible.
+
+### NOTE: EXCLUDE
+The script has an exclude list ([line 172](https://github.com/KuiperBlue/gitlab2github-migration-tool/blob/0913379e6e78e35750a2cb02fc08d20648ecb2d3/main.py#L172))for gitlab groups hardcoded into it. You should change this list depending on your own groups. Include/exclude them during the migration process by adding/removing their names to this list. This was a crude fix to save time.
 
 # Usage
 - Set up the configuration file with your GitLab and GitHub credentials.
